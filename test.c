@@ -75,7 +75,7 @@ task wander() {
 }
 
 void wait (int millis) {
-	wait1Msec(millis);
+	delay(millis);
 }
 
 void resetBumpers () {
