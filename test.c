@@ -14,6 +14,12 @@ void playSound() {
 
 }
 
+void stopMotors () {
+	motor[leftMotor] = motor[rightMotor] = 0;
+}
+
+
+
 void moveNCoast() {
 
 	while (true) {
@@ -34,9 +40,11 @@ void moveNCoast() {
 	}
 }
 
-// Tests the wandering function for challenge 1
-void wander() {
 
+
+// Tests the wandering function for challenge 1
+task wander() {
+	while (true) {
 	//
 
 	// Onstart Direction:
@@ -48,7 +56,14 @@ void wander() {
 	//	next left = 90%
 	//  next right = 10%
 
+		motor[leftMotor] = 32;		// Full speed forward
+		motor[rightMotor] = 64;
+		wait1Msec(3000);
 
+
+		motor[leftMotor] = 64;		// Full speed forward
+		motor[rightMotor] = 32;
+		wait1Msec(3000);
 
 	// While (bumper not engaged)
 	// move forward for random time
@@ -56,13 +71,87 @@ void wander() {
 	// stop 1 sec
 	// swing turn in direction d for random time
 	// stop 1 sec
+	}
+}
+
+void wait (int millis) {
+	wait1Msec(millis);
+}
+
+void resetBumpers () {
+	resetBumpedValue(rightBumper);
+	resetBumpedValue(leftBumper);
+}
+
+void backup (int direction) {
+	motor[leftMotor] = motor[rightMotor] = -32;
+	setSoundVolume(127);
+	for (int i = 0; i < 20; i++) {//this accounts for two seconds of backing up
+		playTone(400, 25); // A for 0.05 seconds
+		wait1Msec(100);		 // A for 0.05 seconds
+	}
+
+	switch (direction) {
+		case 0://left case, so we wanna go right
+			motor[leftMotor] = 32;
+			motor[rightMotor] = -32;
+			break;
+
+		case 1://right case
+			motor[leftMotor] = -32;
+			motor[rightMotor] = 32;
+			break;
+
+		default:
+			motor[leftMotor] = 127;
+			motor[rightMotor] = -127;
+	}
+
+	wait(666);
+}
+
+
+
+task bumpDetection() {
+	resetBumpers();
+
+	while (true) {
+		if (getBumpedValue(rightBumper) > 0) {
+			wait(10);
+			stopMotors();
+			//This indicates a head on collision
+			if (getBumpedValue(leftBumper) > 0) {
+				backup(-1);
+			}
+
+			resetBumpers();
+			stopTask(wander);
+			backup(1);
+
+			startTask(wander);
+		} else if (getBumpedValue(leftBumper)	> 0) {
+			wait(10);
+			stopMotors();
+			//This indicates a head on collision
+			if (getBumpedValue(rightBumper) > 0) {
+				backup(-1);
+			}
+
+			resetBumpers();
+			stopTask(wander);
+			backup(0);
+
+			startTask(wander);
+		}
+	}
 }
 
 task main() {
+	startTask(wander);
+	startTask(bumpDetection);
 
-	while (true) {
-		wander();
-	}
+	while (true);
+
 
 /*
 	resetBumpedValue(rightBumper);
