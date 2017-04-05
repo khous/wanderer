@@ -27,14 +27,14 @@ task wander() {
 	// On Previously right turn:
 	//	next left = 90%
 	//  next right = 10%
-		int rndLeft = rng(32, 10);
-		int rndRight = rng(32, 42);
+		int rndLeft =  rng(20, 44);
+		int rndRight = rng(10, 54);
 		motor[leftMotor] = rndLeft;		// Full speed forward
 		motor[rightMotor] = rndRight;
 		wait1Msec(rng(2000, 1000));
 
-		rndLeft = rng(32, 42);
-		rndRight = rng(32, 10);
+		rndLeft =  rng(10, 54);
+		rndRight = rng(20, 44);
 		motor[leftMotor] = rndLeft;		// Full speed forward
 		motor[rightMotor] = rndRight;
 		wait1Msec(rng(2000, 1000));
@@ -122,6 +122,7 @@ task bumpDetection() {
 }
 
 task main() {
+	playTone(100, 25); // A for 0.05 seconds
 	startTask(wander);
 	startTask(bumpDetection);
 
