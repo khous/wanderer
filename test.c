@@ -27,17 +27,17 @@ task wander() {
 	// On Previously right turn:
 	//	next left = 90%
 	//  next right = 10%
-		int rndLeft =  rng(20, 44);
-		int rndRight = rng(10, 54);
+		int rndLeft =  rng(10, 44);
+		int rndRight = rng(5, 54);
 		motor[leftMotor] = rndLeft;		// Full speed forward
 		motor[rightMotor] = rndRight;
 		wait1Msec(rng(2000, 1000));
 
-		rndLeft =  rng(10, 54);
-		rndRight = rng(20, 44);
+		rndLeft =  rng(5, 54);
+		rndRight = rng(10, 44);
 		motor[leftMotor] = rndLeft;		// Full speed forward
 		motor[rightMotor] = rndRight;
-		wait1Msec(rng(2000, 1000));
+		wait1Msec(rng(500, 2500));
 
 	// While (bumper not engaged)
 	// move forward for random time
@@ -61,7 +61,7 @@ void backup (int direction) {
 	motor[leftMotor] = motor[rightMotor] = -32;
 	setSoundVolume(64);
 	playTone(400, 25); // A for 0.05 seconds
-	wait1Msec(2000);		 // A for 0.05 seconds
+	wait1Msec(1000);		 // A for 0.05 seconds
 
 	switch (direction) {
 		case 0://left case, so we wanna go right
