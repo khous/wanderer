@@ -11,6 +11,11 @@
 #define MANEUVER_DUR_VARIANCE 500
 //This is the minimum time duration of a maneuver in the wandering routine
 #define MANEUVER_DUR_MIN 2500
+#define RPM_GRACE 25
+int average_rpm_left = 0;
+int average_rpm_right = 0;
+bool characterizing = false;
+
 /*
 	Random Number Gen
 	Produce a random number with the given range offset from 0 to the specified offset
@@ -37,24 +42,51 @@ void stopMotors () {
 }
 
 /*
+	Sample the RPM for a period of time to generate an average RPM to base comparisons from
+*/
+void characterizeRpm () {
+
+	characterizing = true;
+	int tmp_average_left = 0,
+			tmp_average_right = 0;
+
+    for (int i = 0; i < 5; i++) {
+    	tmp_average_left += getMotorRPM(leftMotor);
+    	tmp_average_right += getMotorRPM(rightMotor);
+    	wait(100);
+  	}
+
+  	average_rpm_left = tmp_average_left / 5;
+  	average_rpm_right = tmp_average_right / 5;
+  	writeDebugStreamLine("avg rt: %d\n", average_rpm_right);
+  	writeDebugStreamLine("avg lt: %d\n", average_rpm_left);
+  	wait(100);
+  	characterizing = false;
+}
+
+/*
 	Display a biased random walk in the forward direction
 */
 task wander() {
 	while (true) {
-	
-		//this is the lef turn biased block
+
+		//this is the left turn biased block
 		// The two motor speeds overlap however, so though unlikely, it is possible for a turn in any direction
 		int rndLeft =  rng(10, 44);
 		int rndRight = rng(5, 52);
-		motor[leftMotor] = rndLeft;		
+		motor[leftMotor] = rndLeft;
 		motor[rightMotor] = rndRight;
+		wait(100);
+		characterizeRpm();
 		wait(rng(MANEUVER_DUR_VARIANCE, MANEUVER_DUR_MIN));
 
 		//This is the right turn biased block
 		rndLeft =  rng(5, 52);
 		rndRight = rng(10, 44);
-		motor[leftMotor] = rndLeft;		
+		motor[leftMotor] = rndLeft;
 		motor[rightMotor] = rndRight;
+		wait(100);
+		characterizeRpm();
 		wait(rng(MANEUVER_DUR_VARIANCE, MANEUVER_DUR_MIN));
 	}
 }
@@ -76,8 +108,8 @@ void resetBumpers () {
 void backup (int direction) {
 	motor[leftMotor] = motor[rightMotor] = -32;
 	setSoundVolume(64);
-	if (direction == -1)
-		playTone(400, 25); // A for 0.05 seconds
+	//if (direction == -1)
+	playTone(400, 25); // A for 0.05 seconds
 
 	wait(1000);		 // A for 0.05 seconds
 
@@ -106,6 +138,29 @@ void backup (int direction) {
 	wait(SPIN_DURATION + rng(400, 0));
 }
 
+//set expected RPM on every maneuver change for each motor
+//
+
+//for convenience, 0 for left, 1 for right
+bool detectMotorDrop (int motor) {
+	bool drop = false;
+	int diff = 0;
+	if (characterizing) return false;
+	switch (motor) {
+		case 0:
+			diff = abs(average_rpm_left - getMotorSpeed(leftMotor));
+			writeDebugStreamLine("drop diff, of right motor: %d, act speed: %d", diff, getMotorSpeed(leftMotor));
+			drop = diff > RPM_GRACE;
+			break;
+		case 1:
+			diff = abs(average_rpm_right - getMotorSpeed(rightMotor));
+			writeDebugStreamLine("drop diff, of right motor: %d, act speed: %d", diff, getMotorSpeed(rightMotor));
+			drop = diff > RPM_GRACE;
+			break;
+	}
+
+	return drop;
+}
 
 /*
 	Listens to the bumpers for any bump events
@@ -114,11 +169,16 @@ task bumpDetection() {
 	resetBumpers();
 
 	while (true) {
-		if (getBumpedValue(rightBumper) > 0) {
+		if (characterizing) {
+			wait(100);
+			continue;
+		}
+
+		if (detectMotorDrop(1)) {
 			wait(BUMPER_ERR_PERIOD);
 			stopMotors();
 			//This indicates a head on collision
-			if (getBumpedValue(leftBumper) > 0) {
+			if (detectMotorDrop(0)) {
 				stopTask(wander);
 				backup(-1);
 			} else {
@@ -128,11 +188,11 @@ task bumpDetection() {
 			resetBumpers();
 
 			startTask(wander);
-		} else if (getBumpedValue(leftBumper)	> 0) {
+		} else if (detectMotorDrop(0)) {
 			wait(BUMPER_ERR_PERIOD);
 			stopMotors();
 			//This indicates a head on collision
-			if (getBumpedValue(rightBumper) > 0) {
+			if (detectMotorDrop(1)) {
 				stopTask(wander);
 				backup(-1);
 			} else {
@@ -150,6 +210,7 @@ task bumpDetection() {
 task main() {
 	playTone(100, 25); // A for 0.05 seconds
 	startTask(wander);
+	wait(100);
 	startTask(bumpDetection);
 
 	//Never exit main, this causes the robot to stop
